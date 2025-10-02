@@ -8,7 +8,7 @@
   </head>
 
   <body>
-    <div class="slider-container">
+    <div class="slider-container" data-slider-config='{"autoplay": true, "duration": 4000}'>
       <div class="slider">
         <div class="slides" id="slides">
           <div class="slide">
@@ -42,8 +42,8 @@
             </div>
           </div>
         </div>
-        <button class="nav-button prev" onclick="prevSlide()">‹</button>
-        <button class="nav-button next" onclick="nextSlide()">›</button>
+        <button class="nav-button prev" data-action="prev">‹</button>
+        <button class="nav-button next" data-action="next">›</button>
       </div>
 
       <div class="controls">
@@ -51,7 +51,7 @@
         <div class="progress-bar">
           <div class="progress" id="progress"></div>
         </div>
-        <button class="play-pause-btn" onclick="togglePlay()">
+        <button class="play-pause-btn" data-action="toggle">
           <span id="playText">Pause</span>
         </button>
       </div>

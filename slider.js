@@ -1,149 +1,212 @@
-let currentSlide = 0;
-let totalSlides = 5;
-let isPlaying = true;
-let autoTimer = null;
-let progressTimer = null;
+class Slider {
+    constructor(container, options = {}) {
+    this.container = container;
+    this.slidesElements = this.container.querySelectorAll(".slide");
+    this.totalSlides = this.slidesElements.length;
 
-const SLIDER_TIMER = 4000;
+    this.config = {
+        autoplay: true,
+        duration: 4000,
+        ...this.getDataConfig(), //{autoplay: true, duration: 4000,}
+        ...options,
+    };
+   this.currentSlide = 0; 
+   this.isPlaying = this.config.autoplay;
+   this.autoTimer = null;
+   this.progressTimer = null;
 
-const slides = document.querySelector("#slides");
-const indicators = document.querySelector("#indicators");
-const progress = document.querySelector("#progress");
-const playText = document.querySelector("#playText");
+   this.slides = this.container.querySelector(".slides");
+   this.indicators = this.container.querySelector(".indicators");
+   this.progress = this.container.querySelector(".progress");
+   this.playText = this.container.querySelector("#playText");
 
-const nextSlide = () => {
-    currentSlide = currentSlide + 1;
-    if (currentSlide >= totalSlides) {
-        currentSlide = 0;
+
+   if(!this.slides || !this.totalSlides) {
+    console.error("No slides");
+    return;
+   }
+
+   this.init();
+}
+
+getDataConfig() {
+const config = this.container.getAttribute('data-slider-config'); //{autoplay: true, duration: 4000,}
+try {
+return config ? JSON.parse(config): {};
+} catch (error) {
+    console.log("Parse data config error");
+    return {};
+}
+}
+
+init(){
+    this.createIndicators();
+    this.bindEvents();
+    this.updateSlide();
+
+    if (this.isPlaying) {
+        this.startAutoPlay();
     }
-    updateSlider();
-    resetAutoplay();
-};
+    this.updatePlayButton();
 
-const prevSlide = ()=> {
-    currentSlide = currentSlide - 1;
-    if (currentSlide < 0) {
-        currentSlide = totalSlides - 1;
+}
+
+createIndicators(){
+    if (!this.indicators) return;
+    this.indicators.innerHTML = "";
+
+    for (let i = 0; i < this.totalSlides; i++){
+        const indicator = document.createElement("button");
+        indicator.classList.add("indicator");
+        indicator.setAttribute("data-slide", i);
+        indicator.addEventListener("click", () => this.goToSlide(i));
+        this.indicators.appendChild(indicator);
     }
-    updateSlider();
-    resetAutoplay();
+}
+prevSlide() {
+    this.currentSlide = this.currentSlide === 0? this.totalSlides - 1 : this.currentSlide - 1;
+    
+        this.updateSlide();
+        this.resetAutoPlay();
+    }
+
+nextSlide() {
+    this.currentSlide = 
+       this.currentSlide === this.totalSlides - 1 ? 0 : this.currentSlide + 1;
+       this.updateSlide();
+       this.resetAutoPlay();
+}
+
+goToSlide(index) {
+    this.currentSlide = index;
+    this.updateSlide();
+    this.resetAutoPlay();
+}
+
+updatePlayButton(){
+    if (this.playText) {
+        this.playText.textContent = this.isPlaying ? "Pause" : "Play";
 };
+}
 
-const goToSlide = (slideNumber) => {
-    currentSlide = slideNumber;
-    updateSlider();
-    resetAutoplay();
-};
+togglePlay() {
+   this.isPlaying = !this.isPlaying; 
 
-const updateSlider = () => {
-    const moveDisnace = -currentSlide * 100;
-    slides.style.transform = `translateX(${moveDisnace}%)`;
-    const allIndicators = indicators.querySelectorAll(".indicator");
+   if (this.isPlaying) {
+     this.startAutoPlay();
+   }else {
+     this.stopAutoPlay();
+   }
+   this.updatePlayButton();//
+}
 
-    allIndicators.forEach((item, index) =>{
-        if (index === currentSlide) {
-            item.classList.add("active");
-        } else {
-            item.classList.remove("active");
+bindEvents(){
+    this.container.addEventListener("click", (event) => {
+        const action = event.target.getAttribute("data-action");//prev, next, toggle
+        switch(action) {
+            case "prev":
+                this.prevSlide();
+                break;
+            case "next":
+                this.nextSlide();
+                break;
+            case "toggle":
+                this.togglePlay();
+                break;
         }
-    });
-};
+});
 
-const togglePlay = () => {
-    if (isPlaying) {
-        stopAutoPlay();
-        isPlaying = false;
-        playText.textContent = "Play";
-    } else {
-        startAutoPlay();
-        isPlaying = true;
-        playText.textContent = "Pause";
+ this.container.addEventListener("keydown", (event) => {
+    switch(event.key){
+        case "ArrowLeft":
+            this.prevSlide();
+            break;
+        case "ArrowRight":
+            this.nextSlide();
+            break;
+            case " ":
+                this.togglePlay();
+                break;
+
     }
-};
+ })
+}
+updateSlide() {
+    const translateX = -this.currentSlide * 100;
+    this.slides.style.transform = `translateX(${translateX}%)`;
 
-const startAutoPlay = () => {
-    autoTimer = setInterval(() => {
-        nextSlide();
-    }, SLIDER_TIMER);
-
-    startProgressBar();
-};
-
-const stopAutoPlay = () => {
-    if (autoTimer) {
-        clearInterval(autoTimer);
-        autoTimer = null;
+    if (this.indicators) {
+        const indicators = this.indicators.querySelectorAll(".indicator");//
+        indicators.forEach((indicator, index) => {
+           indicator.classList.toggle("active", index === this.currentSlide); 
+        });
     }
-    stopProgressBar();
-};
+}
 
-const resetAutoplay = () => {
-    if (isPlaying) {
-        stopAutoPlay();
-        startAutoPlay();
-    }
-};
+startProgressBar() {
+    if (!this.progress) return;
 
-const startProgressBar = () => {
     let startTime = Date.now();
 
-const updateProgress = () => {
-    if (!isPlaying) return;
-    const elapsed = Date.now() - startTime;
-    const progressPercent = (elapsed / SLIDER_TIMER) * 100;
+    const updateProgress = () => {
+        if (!this.isPlaying || !this.autoTimer) return;
 
-    if (progressPercent >= 100) {
-        progress.style.width = "100%";
-        setTimeout(() => {
-            progress.style.width = "0%"
-            startTime = Date.now();
-    }, 100);
-} else {
-    progress.style.width = `${progressPercent}%`;
-    }
- progressTimer = requestAnimationFrame(updateProgress);
-};
+        const elapsed = Date.now() - startTime;
+        const progressPercent =  (elapsed / this.config.duration) * 100;
+        if (progressPercent >= 100) {
+            this.progress.style.width = "100%";
+            setTimeout(() => {
+                this.progress.style.width = "0%";
+                startTime = Date.now();
+            }, 100);
+        } else {
+            this.progress.style.width = `${progressPercent}%`; 
+        }
+        this.progressTimer = requestAnimationFrame(updateProgress);
+    };
 
-updateProgress();
-};
-
-const stopProgressBar = () => {
-    if (progressTimer) {
-        cancelAnimationFrame(progressTimer);
-        progressTimer = null;
-    }
-    progress.style.width = "0%";
-};
-
-const handleKeyboard = (event) => {
-switch (event.key) {
-    case "ArrowLeft":
-    prevSlide();
-    break;
-    case "ArrowRight":
-    nextSlide();
-    break;
-    case " ":
-    togglePlay();
-    break;
+    updateProgress();//
 }
-};
 
-const createIndicators = () => {
-    for (let i = 0; i < totalSlides; i++) {
-        const dot = document.createElement('button');
-        dot.classList.add('indicator');
-        dot.onclick = () => goToSlide(i);
-        indicators.appendChild(dot);
+stopProgressBar() {
+   if (this.progressTimer) {
+    cancelAnimationFrame(this.progressTimer);
+    this.progressTimer = null;
+   } 
+   this.progress.style.width = "0%";
+}
+
+startAutoPlay() {
+    if (!this.config.autoplay) return;
+
+    this.autoTimer = setInterval(() => {
+       this.nextSlide();
+    }, this.config.duration);
+
+    this.startProgressBar();//
+}
+
+stopAutoPlay() {
+    if (this.autoTimer) {
+        clearInterval(this.autoTimer);
+        this.autoTimer = null;
     }
-};
+    this.stopProgressBar();//
+}
 
-const initSlider = () => {
-    createIndicators();
-    updateSlider();
-    startAutoPlay();
+resetAutoPlay() {
+    if (this.isPlaying) {
+       this.stopAutoPlay();
+       this.startAutoPlay();
+    }
+}
 
-    document.addEventListener("keydown", handleKeyboard);
-};
 
-document.addEventListener("DOMContentLoaded", initSlider);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const sliderContainer =  document.querySelector(".slider-container");
+  if (sliderContainer) {
+    new Slider(sliderContainer);
+  }
+})
